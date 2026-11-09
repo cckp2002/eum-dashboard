@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이음 E-UM 자료 대시보드</title>
+<meta name="description" content="교사-AI 협업 미래형 학생평가 모델 연구학교 자료(프로그램, 프롬프트, 안내서, 사례집, 운영 보고서) 바로가기">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="이음 E-UM 자료 대시보드 처음으로">
+      <span class="brand-mark">이음</span>
+      <span>E-UM<small id="org"></small></span>
+    </a>
+    <nav class="nav" aria-label="바로가기">
+      <a href="#tools">프로그램 · 프롬프트</a>
+      <a href="#docs">안내서 · 사례집 · 보고서</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero wrap">
+    <span class="kicker" id="kicker"></span>
+    <h1 id="title"></h1>
+    <p id="lead"></p>
+    <ol class="flow" aria-label="추천 이용 순서">
+      <li>안내서로 사용법 익히기</li>
+      <li>프로그램·프롬프트로 평가도구 만들기</li>
+      <li>사례집·보고서로 더 깊이 보기</li>
+    </ol>
+  </section>
+
+  <section class="section wrap" id="tools">
+    <div class="section-head">
+      <div><h2>평가도구 만들기</h2><p>바로 사용할 수 있는 두 가지 도구입니다. 새 창에서 열립니다.</p></div>
+    </div>
+    <div class="grid two" id="toolGrid"></div>
+  </section>
+
+  <section class="section wrap" id="docs">
+    <div class="section-head">
+      <div><h2>자료 읽기</h2><p>책장을 넘기듯 e북으로 읽거나, PDF 원문으로 열 수 있습니다.</p></div>
+    </div>
+    <div class="grid three" id="docGrid"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span id="foot"></span>
+    <span>2022 개정 교육과정 실현을 위한 ‘교사-AI 협업’ 미래형 학생평가 모델 연구 · 울산광역시교육청 지정 정책연구학교</span>
+  </div>
+</footer>
+
+<script src="config.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<script>
+(function () {
+  var C = window.EUM;
+  var ICON = {
+    tool: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg>',
+    ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4H10a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H3.5A1.5 1.5 0 0 1 2 16.5zM22 5.5A1.5 1.5 0 0 0 20.5 4H14a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6.5a1.5 1.5 0 0 0 1.5-1.5z"/></svg>',
+    pdf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>'
+  };
+  function el(html) { var t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  document.getElementById('org').textContent = C.site.org;
+  document.getElementById('kicker').textContent = C.site.kicker;
+  document.getElementById('title').textContent = C.site.title;
+  document.getElementById('lead').textContent = C.site.lead;
+  document.getElementById('foot').textContent = C.site.org;
+
+  var tg = document.getElementById('toolGrid');
+  C.tools.forEach(function (t) {
+    tg.appendChild(el(
+      '<article class="card tool">' +
+        '<div class="tool-top"><span class="ico">' + ICON[t.icon] + '</span><span class="ext" aria-hidden="true">' + ICON.ext + '</span></div>' +
+        '<span class="tag">' + esc(t.tag) + '</span>' +
+        '<h3>' + esc(t.title) + '</h3>' +
+        '<p>' + esc(t.desc) + '</p>' +
+        '<ul class="points">' + t.points.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul>' +
+        '<div class="actions"><a class="btn btn-primary" href="' + esc(t.url) + '" target="_blank" rel="noopener">' + esc(t.cta) + ICON.ext + '</a></div>' +
+      '</article>'));
+  });
+
+  var dg = document.getElementById('docGrid');
+  C.docs.forEach(function (d) {
+    var card = el(
+      '<article class="card doc">' +
+        '<div class="cover"><span class="badge">' + d.pages + '쪽</span><div class="cover-frame"><span class="ph">표지 불러오는 중</span></div></div>' +
+        '<div class="doc-body">' +
+          '<span class="tag">' + esc(d.tag) + '</span>' +
+          '<h3>' + esc(d.title) + '</h3>' +
+          '<p>' + esc(d.desc) + '</p>' +
+          '<div class="actions">' +
+            '<a class="btn btn-primary" href="viewer.html?doc=' + d.id + '">' + ICON.book + 'e북으로 보기</a>' +
+            '<a class="btn btn-ghost" href="' + esc(d.file) + '" target="_blank" rel="noopener">' + ICON.pdf + 'PDF 원문</a>' +
+          '</div>' +
+        '</div>' +
+      '</article>');
+    dg.appendChild(card);
+    d._frame = card.querySelector('.cover-frame');
+  });
+
+  /* 표지는 PDF 첫 쪽을 그대로 그려서 보여 줍니다. 실패해도 버튼은 정상 동작합니다. */
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
+    C.docs.reduce(function (chain, d) {
+      return chain.then(function () {
+        return pdfjsLib.getDocument(d.file).promise.then(function (pdf) {
+          return pdf.getPage(1).then(function (page) {
+            var base = page.getViewport({ scale: 1 });
+            var vp = page.getViewport({ scale: 520 / base.width });
+            var cv = document.createElement('canvas');
+            cv.width = vp.width; cv.height = vp.height;
+            return page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise.then(function () {
+              d._frame.innerHTML = ''; d._frame.appendChild(cv);
+              pdf.destroy();
+            });
+          });
+        });
+      }).catch(function () { d._frame.innerHTML = '<span class="ph">' + esc(d.tag) + '</span>'; });
+    }, Promise.resolve());
+  } else {
+    C.docs.forEach(function (d) { d._frame.innerHTML = '<span class="ph">' + esc(d.tag) + '</span>'; });
+  }
+})();
+</script>
+</body>
+</html>

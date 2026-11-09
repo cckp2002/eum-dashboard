@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>e북 보기 · 이음 E-UM</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { display: flex; flex-direction: column; background: #e9eff1; }
+  .vbar { background: var(--paper); border-bottom: 1px solid var(--line); flex: none; }
+  .vbar .wrap { width: 100%; padding: 0 16px; display: flex; align-items: center; gap: 12px; height: 60px; }
+  .vtitle { flex: 1; min-width: 0; }
+  .vtitle strong { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vtitle span { font-size: 12px; color: var(--dim); }
+  .vbar .btn { min-height: 38px; padding: 0 14px; font-size: 14px; }
+  .stage { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; padding: 16px 56px; }
+  #flip { width: 100%; height: 100%; }
+  .page { background: #fff; overflow: hidden; }
+  .page img { width: 100%; height: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+  .page .wait { width: 100%; height: 100%; display: grid; place-items: center; color: var(--dim); font-size: 13px; }
+  .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); box-shadow: var(--shadow-sm); display: grid; place-items: center; color: var(--teal-deep); z-index: 5; }
+  .nav-btn:hover:not(:disabled) { background: var(--teal-light); }
+  .nav-btn:disabled { opacity: 0.35; cursor: default; }
+  .nav-btn svg { width: 22px; height: 22px; }
+  #prev { left: 6px; } #next { right: 6px; }
+  .vfoot { flex: none; background: var(--paper); border-top: 1px solid var(--line); padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 18px; font-size: 14px; }
+  .jump { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .jump input[type=number] { width: 64px; height: 36px; border: 1px solid var(--line); border-radius: 10px; text-align: center; font: inherit; font-weight: 700; }
+  .jump input[type=range] { width: min(320px, 40vw); accent-color: var(--teal); }
+  .hint { color: var(--dim); font-size: 12.5px; }
+  .msg { position: absolute; inset: 0; display: none; place-items: center; text-align: center; padding: 24px; background: #e9eff1; z-index: 6; }
+  .msg.show { display: grid; }
+  .msg div { max-width: 420px; }
+  .spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--teal); animation: sp 0.9s linear infinite; margin: 0 auto 14px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  @media (max-width: 640px) {
+    .stage { padding: 8px 8px; }
+    .nav-btn { width: 38px; height: 38px; opacity: 0.9; }
+    #prev { left: 2px; } #next { right: 2px; }
+    .vbar .btn span { display: none; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="vbar">
+  <div class="wrap">
+    <a class="btn btn-ghost" href="./" aria-label="대시보드로 돌아가기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>대시보드</span></a>
+    <div class="vtitle"><strong id="vt">e북 불러오는 중</strong><span id="vs"></span></div>
+    <button class="btn btn-ghost" id="fs" type="button" aria-label="전체 화면"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg><span>전체 화면</span></button>
+    <a class="btn btn-primary" id="orig" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><span>PDF 원문</span></a>
+  </div>
+</header>
+
+<main class="stage" id="stage">
+  <button class="nav-btn" id="prev" type="button" aria-label="이전 쪽"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+  <div id="flip"></div>
+  <button class="nav-btn" id="next" type="button" aria-label="다음 쪽"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+  <div class="msg show" id="msg"><div><div class="spin"></div><p id="msgt">책을 펼치는 중입니다…</p></div></div>
+</main>
+
+<footer class="vfoot" style="margin:0">
+  <div class="jump">
+    <label for="pn">쪽 이동</label>
+    <input id="pn" type="number" min="1" value="1" inputmode="numeric">
+    <span id="total">/ 1</span>
+    <input id="range" type="range" min="1" max="1" value="1" aria-label="쪽 슬라이더">
+  </div>
+  <span class="hint">← → 방향키 · 모서리를 끌거나 눌러서 넘기기</span>
+</footer>
+
+<script>
+/* 화면 갱신(requestAnimationFrame)이 멈추는 환경(백그라운드 창 등)에서도 쪽 그리기가 끝나도록 하는 보조 장치: ?raf=0 */
+if (/[?&]raf=0/.test(location.search)) window.requestAnimationFrame = function (f) { return setTimeout(function () { f(performance.now()); }, 16); };
+</script>
+<script src="config.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/page-flip.browser.js"></script>
+<script>
+(function () {
+  var C = window.EUM;
+  var id = new URLSearchParams(location.search).get('doc');
+  var doc = C.docs.filter(function (d) { return d.id === id; })[0];
+  var $ = function (s) { return document.getElementById(s); };
+  var msg = $('msg'), msgt = $('msgt');
+
+  if (!doc) { msgt.innerHTML = '문서를 찾을 수 없습니다. <a href="./" style="color:var(--teal-deep);font-weight:700">대시보드로 돌아가기</a>'; msg.querySelector('.spin').remove(); return; }
+  document.title = doc.title + ' · 이음 E-UM';
+  $('vt').textContent = doc.title;
+  $('vs').textContent = doc.tag + ' · ' + doc.pages + '쪽';
+  $('orig').href = doc.file;
+
+  function fail() {
+    msg.classList.add('show');
+    msg.innerHTML = '<div><p><strong>e북을 열지 못했습니다.</strong><br>PDF 원문으로 이어서 볼 수 있습니다.</p><a class="btn btn-primary" href="' + doc.file + '">PDF 원문 열기</a></div>';
+  }
+  if (!window.pdfjsLib || !window.St) { fail(); return; }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
+
+  pdfjsLib.getDocument(doc.file).promise.then(function (pdf) {
+    var N = pdf.numPages;
+    return pdf.getPage(1).then(function (p1) {
+      var vp = p1.getViewport({ scale: 1 });
+      start(pdf, N, vp.width / vp.height);
+    });
+  }).catch(fail);
+
+  function start(pdf, N, ratio) {
+    var flipEl = $('flip');
+    var urls = new Array(N);
+    var pages = [];
+    for (var i = 0; i < N; i++) {
+      var d = document.createElement('div');
+      d.className = 'page';
+      if (i === 0 || i === N - 1) d.setAttribute('data-density', 'hard');
+      d.innerHTML = '<div class="wait">' + (i + 1) + '쪽</div>';
+      flipEl.appendChild(d);
+      pages.push(d);
+    }
+
+    var H = 700, W = Math.round(H * ratio);
+    var pf = new St.PageFlip(flipEl, {
+      width: W, height: H, size: 'stretch',
+      minWidth: 240, maxWidth: 900, minHeight: 340, maxHeight: 1300,
+      showCover: true, maxShadowOpacity: 0.45, mobileScrollSupport: false,
+      drawShadow: true, flippingTime: 700, usePortrait: true, autoSize: true, clickEventForward: false
+    });
+    pf.loadFromHTML(pages);
+    msg.classList.remove('show');
+
+    var cur = 0;
+    var pn = $('pn'), range = $('range'), prev = $('prev'), next = $('next');
+    pn.max = N; range.max = N; $('total').textContent = '/ ' + N;
+
+    function sync() {
+      cur = focus = pf.getCurrentPageIndex();
+      pn.value = cur + 1; range.value = cur + 1;
+      prev.disabled = cur <= 0;
+      next.disabled = cur >= N - 1 || (pf.getOrientation() === 'landscape' && cur >= N - 2 && N % 2 === 0 && cur >= N - 2);
+      pump();
+    }
+    pf.on('flip', sync);
+    pf.on('changeOrientation', function () { setTimeout(sync, 50); });
+
+    function renderPage(idx) {
+      return pdf.getPage(idx + 1).then(function (page) {
+        var base = page.getViewport({ scale: 1 });
+        var vp = page.getViewport({ scale: 1000 / base.width });
+        var cv = document.createElement('canvas');
+        cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+        return page.render({ canvasContext: ctx, viewport: vp }).promise.then(function () {
+          return new Promise(function (res) {
+            cv.toBlob(function (b) {
+              urls[idx] = URL.createObjectURL(b);
+              var img = new Image();
+              img.draggable = false; img.alt = (idx + 1) + '쪽';
+              img.onload = function () { pages[idx].innerHTML = ''; pages[idx].appendChild(img); res(); };
+              img.src = urls[idx];
+            }, 'image/jpeg', 0.88);
+          });
+        });
+      });
+    }
+    var running = 0, focus = 0;
+    function pump() {
+      while (running < 2) {
+        var best = -1, bd = 1e9;
+        for (var i = 0; i < N; i++) if (!pages[i]._tried) { var dd = Math.abs(i - focus) + (i < focus ? 0.5 : 0); if (dd < bd) { bd = dd; best = i; } }
+        if (best < 0) return;
+        running++; pages[best]._tried = true;
+        (function (b) {
+          renderPage(b).catch(function () { pages[b].innerHTML = '<div class="wait">불러오지 못했습니다</div>'; }).then(function () { running--; pump(); });
+        })(best);
+      }
+    }
+
+    prev.onclick = function () { pf.flipPrev(); };
+    next.onclick = function () { pf.flipNext(); };
+    function go(n) { n = Math.max(1, Math.min(N, n | 0)); focus = n - 1; pump(); pf.flip(n - 1); }
+    pn.addEventListener('change', function () { go(+pn.value); });
+    range.addEventListener('change', function () { go(+range.value); });
+    range.addEventListener('input', function () { pn.value = range.value; });
+    document.addEventListener('keydown', function (e) {
+      if (e.target === pn) return;
+      if (e.key === 'ArrowRight') pf.flipNext();
+      else if (e.key === 'ArrowLeft') pf.flipPrev();
+      else if (e.key === 'Home') go(1);
+      else if (e.key === 'End') go(N);
+    });
+    $('fs').onclick = function () {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+    };
+    document.addEventListener('fullscreenchange', function () { setTimeout(function () { pf.update(); }, 150); });
+    window.addEventListener('resize', function () { setTimeout(function () { pf.update(); }, 100); });
+
+    sync();
+  }
+})();
+</script>
+</body>
+</html>
